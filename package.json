@@ -1,0 +1,38 @@
+{
+  "name": "grjp-scraper",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/api/server.ts",
+    "build": "tsc",
+    "start": "node dist/api/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Romankid/grjp-scraper.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/Romankid/grjp-scraper/issues"
+  },
+  "homepage": "https://github.com/Romankid/grjp-scraper#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
+    "crawlee": "^3.17.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "html-to-text": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/html-to-text": "^9.0.4",
+    "@types/node": "^26.0.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}
