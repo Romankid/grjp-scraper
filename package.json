@@ -23,6 +23,7 @@
   "homepage": "https://github.com/Romankid/grjp-scraper#readme",
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
+    "cheerio": "^1.2.0",
     "crawlee": "^3.17.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

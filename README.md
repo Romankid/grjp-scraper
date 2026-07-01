@@ -1,59 +1,57 @@
-# GRJP Scraper (Standalone)
+# GRJP Clue Detector
 
-Lightweight, self-contained HTML scraper extracted from the original GRJP monorepo.
+Detects specific HTML clues on websites (chatbots, CRMs, tech stack signals, etc.).
 
-- Uses **Crawlee + Cheerio** (fast, no browser needed)
-- Works with or without Supabase
-- Automatically tries to create the storage bucket
-- Simple HTTP API designed for Clay
+This is the correct extraction from the original GRJP scraper focused on **identifying vendors and signals** in HTML, not bulk text scraping.
 
-## Quick Start (Minimal Setup)
+## Quick Start
 
 ```bash
 git clone https://github.com/Romankid/grjp-scraper.git
 cd grjp-scraper
-cp .env.example .env
 npm install
 npm run dev
 ```
 
-That's it. The scraper will work even without Supabase configured (it just returns the text in the response).
-
 ## Usage
 
-**POST** `http://localhost:3000/scrape`
+**POST** `/detect`
 
 ```json
 {
-  "partitionId": "clay-leads-2026",
-  "urls": [
-    "https://example.com"
+  "urls": ["https://university.edu"],
+  "includeChatbots": true,
+  "includeCrm": true
+}
+```
+
+**Response example:**
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "url": "https://university.edu",
+      "success": true,
+      "chatbots": [
+        { "match": "Element451", "foundStrings": ["messenger.451.io"] }
+      ],
+      "crm": [
+        { "match": "Slate", "foundStrings": ["slate-technolutions"] }
+      ]
+    }
   ]
 }
 ```
 
-**Response** includes the clean text for every URL.  
-If Supabase is configured, it also saves the text to storage.
+## Default Detections
 
-## Optional: Supabase Storage
+- **Chatbots**: Mainstay, Ocelot, Gecko, Element451, Ivy.ai, Oracle, BlackBeltHelp, Ada, Olark, Chaport
+- **CRMs**: Slate, Target X, Ellucian CRM Recruit, Enrollment Rx, Salesforce, BlackBaud
 
-If you want the scraped text saved to Supabase:
+You can also pass custom `customKeys` for your own detection rules.
 
-1. Add these to `.env`:
-   ```env
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   ```
+## Purpose
 
-2. The scraper will automatically create the `scraped-content` bucket if it doesn't exist.
-
-## Deployment
-
-```bash
-docker build -t grjp-scraper .
-docker run -p 3000:3000 --env-file .env grjp-scraper
-```
-
----
-
-**Status**: Fully working, minimal setup version. Ready to use.
+Built for identifying technology and service clues on higher education websites via HTML inspection. Designed to be called from Clay or other enrichment tools.

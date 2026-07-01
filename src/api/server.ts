@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { scrapeUrls, ScrapeRequest } from '../scraper/scraper.js';
+import { detectFromUrls, DetectRequest } from '../detector/detector.js';
 
 dotenv.config();
 
@@ -10,49 +10,35 @@ app.use(express.json({ limit: '10mb' }));
 const PORT = process.env.PORT || 3000;
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'grjp-scraper' });
+  res.json({ status: 'ok', service: 'grjp-clue-detector' });
 });
 
 /**
- * Main scraping endpoint
- * POST /scrape
- * Body: { partitionId: string, urls: string[], maxConcurrency?: number, maxRequestsPerMinute?: number }
+ * Main clue detection endpoint
+ * POST /detect
  */
-app.post('/scrape', async (req, res) => {
+app.post('/detect', async (req, res) => {
   try {
-    const body: ScrapeRequest = req.body;
+    const body: DetectRequest = req.body;
 
-    if (!body.partitionId || !body.urls || !Array.isArray(body.urls)) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: partitionId and urls[]' 
-      });
+    if (!body.urls || !Array.isArray(body.urls) || body.urls.length === 0) {
+      return res.status(400).json({ error: 'urls array is required' });
     }
 
-    console.log(`[scrape] Starting job for partition ${body.partitionId} with ${body.urls.length} URLs`);
-
-    const results = await scrapeUrls(body);
-
-    const successful = results.filter(r => r.success);
-    const failed = results.filter(r => !r.success);
+    const results = await detectFromUrls(body);
 
     res.json({
       success: true,
-      partitionId: body.partitionId,
-      total: results.length,
-      successful: successful.length,
-      failed: failed.length,
+      count: results.length,
       results,
     });
   } catch (error: any) {
-    console.error('[scrape] Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
-    });
+    console.error(error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 GRJP Scraper running on port ${PORT}`);
-  console.log(`   POST http://localhost:${PORT}/scrape`);
+  console.log(`🔍 GRJP Clue Detector running on port ${PORT}`);
+  console.log(`   POST http://localhost:${PORT}/detect`);
 });
