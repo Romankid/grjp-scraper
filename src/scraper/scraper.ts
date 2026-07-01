@@ -1,15 +1,19 @@
 import { CheerioCrawler, RequestQueue, ProxyConfiguration } from 'crawlee';
 import { convert } from 'html-to-text';
 import { createHash, randomUUID } from 'crypto';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+let supabase: SupabaseClient | null = null;
+
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 
 const PROXY_URLS = [
   'http://sp3t6soe8s:wmA1+pUdq481hnnqNE@dc.decodo.com:10000',
@@ -24,7 +28,7 @@ export interface ScrapeResult {
   url: string;
   text: string;
   charCount: number;
-  storagePath: string;
+  storagePath?: string;
   success: boolean;
   error?: string;
 }
@@ -36,12 +40,38 @@ export interface ScrapeRequest {
   maxRequestsPerMinute?: number;
 }
 
+async function ensureBucketExists(bucketName: string): Promise<boolean> {
+  if (!supabase) return false;
+
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = buckets?.some(b => b.name === bucketName);
+
+    if (!exists) {
+      const { error } = await supabase.storage.createBucket(bucketName, {
+        public: false,
+      });
+      if (error) {
+        console.warn(`Could not create bucket ${bucketName}:`, error.message);
+        return false;
+      }
+      console.log(`Created bucket: ${bucketName}`);
+    }
+    return true;
+  } catch (err) {
+    console.warn('Bucket check failed:', err);
+    return false;
+  }
+}
+
 export async function scrapeUrls(req: ScrapeRequest): Promise<ScrapeResult[]> {
   const { partitionId, urls, maxConcurrency = 10, maxRequestsPerMinute = 60 } = req;
   const jobId = randomUUID();
   const requestQueue = await RequestQueue.open(jobId);
 
   const results: ScrapeResult[] = [];
+  const bucketName = 'scraped-content';
+  const storageReady = await ensureBucketExists(bucketName);
 
   const crawler = new CheerioCrawler({
     maxConcurrency,
@@ -61,17 +91,23 @@ export async function scrapeUrls(req: ScrapeRequest): Promise<ScrapeResult[]> {
           ],
         });
 
-        const fileName = createHash('sha256').update(request.url).digest('hex') + '.txt';
-        const storagePath = `scraping/${partitionId}/${fileName}`;
+        let storagePath: string | undefined;
 
-        const { error } = await supabase.storage
-          .from('scraped-content')
-          .upload(storagePath, cleanText, {
-            contentType: 'text/plain',
-            upsert: true,
-          });
+        if (supabase && storageReady) {
+          const fileName = createHash('sha256').update(request.url).digest('hex') + '.txt';
+          storagePath = `scraping/${partitionId}/${fileName}`;
 
-        if (error) throw error;
+          const { error } = await supabase.storage
+            .from(bucketName)
+            .upload(storagePath, cleanText, {
+              contentType: 'text/plain',
+              upsert: true,
+            });
+
+          if (error) {
+            console.warn(`Storage upload failed for ${request.url}:`, error.message);
+          }
+        }
 
         results.push({
           url: request.url,
@@ -85,7 +121,6 @@ export async function scrapeUrls(req: ScrapeRequest): Promise<ScrapeResult[]> {
           url: request.url,
           text: '',
           charCount: 0,
-          storagePath: '',
           success: false,
           error: err.message,
         });
@@ -96,7 +131,6 @@ export async function scrapeUrls(req: ScrapeRequest): Promise<ScrapeResult[]> {
         url: request.url,
         text: '',
         charCount: 0,
-        storagePath: '',
         success: false,
         error: error.message,
       });

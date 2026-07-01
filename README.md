@@ -1,92 +1,59 @@
-# GRJP Scraper
+# GRJP Scraper (Standalone)
 
-Standalone HTML scraper extracted from the original GRJP monorepo.  
-Uses **Crawlee + Cheerio** for fast, lightweight scraping and stores clean text in **Supabase Storage**.
+Lightweight, self-contained HTML scraper extracted from the original GRJP monorepo.
 
-Designed to be called from Clay (or any HTTP client) and owned by you.
+- Uses **Crawlee + Cheerio** (fast, no browser needed)
+- Works with or without Supabase
+- Automatically tries to create the storage bucket
+- Simple HTTP API designed for Clay
 
-## Features
-- Cheerio-based scraping (fast, no browser overhead)
-- Clean text extraction with `html-to-text`
-- Automatic upload to Supabase Storage
-- Proxy support (Decodo configured)
-- Simple REST API
-
-## Setup
-
-### 1. Supabase Setup (one-time)
-
-1. Go to your Supabase project
-2. Create a new Storage bucket called **`scraped-content`** (make it public or use service role)
-3. Get your `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
-
-### 2. Local Development
+## Quick Start (Minimal Setup)
 
 ```bash
 git clone https://github.com/Romankid/grjp-scraper.git
 cd grjp-scraper
 cp .env.example .env
-# Edit .env with your Supabase credentials
 npm install
 npm run dev
 ```
 
-The server will start on port 3000.
+That's it. The scraper will work even without Supabase configured (it just returns the text in the response).
 
-### 3. Usage (from Clay or curl)
+## Usage
 
 **POST** `http://localhost:3000/scrape`
 
 ```json
 {
-  "partitionId": "clay-leads-june2026",
+  "partitionId": "clay-leads-2026",
   "urls": [
-    "https://example.com/page1",
-    "https://example.com/page2"
-  ],
-  "maxConcurrency": 8,
-  "maxRequestsPerMinute": 40
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "partitionId": "clay-leads-june2026",
-  "total": 2,
-  "successful": 2,
-  "failed": 0,
-  "results": [
-    {
-      "url": "https://example.com/page1",
-      "text": "Clean extracted text here...",
-      "charCount": 1240,
-      "storagePath": "scraping/clay-leads-june2026/abc123.txt",
-      "success": true
-    }
+    "https://example.com"
   ]
 }
 ```
 
-The cleaned text is also saved to Supabase Storage at `scraping/{partitionId}/{hash}.txt`.
+**Response** includes the clean text for every URL.  
+If Supabase is configured, it also saves the text to storage.
+
+## Optional: Supabase Storage
+
+If you want the scraped text saved to Supabase:
+
+1. Add these to `.env`:
+   ```env
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   ```
+
+2. The scraper will automatically create the `scraped-content` bucket if it doesn't exist.
 
 ## Deployment
-
-### Docker
 
 ```bash
 docker build -t grjp-scraper .
 docker run -p 3000:3000 --env-file .env grjp-scraper
 ```
 
-(See Dockerfile below)
-
-## Notes for Milo (the agent)
-
-This tool is now owned and maintained in this repo.  
-Both you and Sam can use the `/scrape` endpoint.
-
 ---
 
-**Status**: Initial working version complete. Ready for testing.
+**Status**: Fully working, minimal setup version. Ready to use.
